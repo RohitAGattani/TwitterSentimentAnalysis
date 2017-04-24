@@ -90,7 +90,7 @@ processedTestTweets = preprocessData(testData)
 
 # feature extraction
 print('[INFO]: extracting features from the training data...')
-vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1,2), sublinear_tf=True, max_df=0.5)
+vectorizer = TfidfVectorizer(stop_words='english', ngram_range=(1,1), sublinear_tf=True, max_df=0.5)
 trainingDtm = vectorizer.fit_transform(processedTrainingTweets)
 
 print('[INFO]: extracting features from the test data...')
