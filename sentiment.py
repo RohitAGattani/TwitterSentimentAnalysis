@@ -18,28 +18,9 @@ from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import Pipeline
 from sklearn import metrics
 
-# read csv data file and keep only required columns
-print('[INFO]: loading data...')
-data = pd.read_csv('input/US_Airline.csv')
-data = data[['text', 'sentiment']]
-print('[INFO]: data loaded')
-
-# split the dataset into a training set and a test set
-trainingData, testData = train_test_split(data, test_size = 0.2, random_state=42)
-
-# store tweets and labels in separate variables
-trainingTweets = trainingData['text']
-testTweets = testData['text']
-trainingLabels = trainingData['sentiment']
-testLabels = testData['sentiment']
-
 # display training and test data size
 def sizeMB(docs):
 	return sum(len(s.encode('utf-8')) for s in docs) / 1e6
-
-print('[INFO]: (training set) %d tweets - %0.3fMB' %(len(trainingTweets), sizeMB(trainingTweets)))
-print('[INFO]:     (test set) %d tweets - %0.3fMB' %(len(testTweets), sizeMB(testTweets)))
-print()
 
 # display categorical details of dataset 
 def printGroupByDetails(data, groupByColumn):
@@ -47,20 +28,102 @@ def printGroupByDetails(data, groupByColumn):
 	for name, group in groupedData:
 		print(" %s => %d " %(name, len(group)))
 
+# read csv data file and keep only required columns
+print('[INFO]: loading data...')
+data = pd.read_csv('input/US_Airline.csv')
+data = data[['text', 'sentiment']]
+print('[INFO]: data loaded')
+print()
+
+print('[INFO]: (full set) %d tweets - %0.3fMB' %(len(data['text']), sizeMB(data['text'])))
+print()
+
+# display details of full dataset
+print('[INFO]: full set details')
+printGroupByDetails(data, 'sentiment')
+print()
+
+# split the dataset into a training set and a test set
+trainingData, testData = train_test_split(data, test_size = 0.2, random_state = 42)
+
+# store tweets and labels in separate variables
+trainingTweets = trainingData['text']
+testTweets = testData['text']
+trainingLabels = trainingData['sentiment']
+testLabels = testData['sentiment']
+
+# display details of training set and test set
+print('[INFO]: (training set) %d tweets - %0.3fMB' %(len(trainingTweets), sizeMB(trainingTweets)))
+print('[INFO]:     (test set) %d tweets - %0.3fMB' %(len(testTweets), sizeMB(testTweets)))
+print()
+
 print('[INFO]: training set details')
 printGroupByDetails(trainingData, 'sentiment')
-
+print()
 
 # preprocessing
-tokenRegexRules = [(r'(?<=^|(?<=[^a-zA-Z0-9-_\\.]))@[A-Za-z]+[A-Za-z0-9_]+', ''),
-			  (r'(?<=^|(?<=[^a-zA-Z0-9-_\\.]))#[A-Za-z]+[A-Za-z0-9_]+', ''),
-			  (r'(http|https|ftp)\S+', ''),
+tokenRegexRules = [
+			  # twitter tokens
+			  (r'(?<=^|(?<=[^a-zA-Z0-9-_\\.]))@[A-Za-z]+[A-Za-z0-9_]+', 'HASHTAG'),
+			  (r'(?<=^|(?<=[^a-zA-Z0-9-_\\.]))#[A-Za-z]+[A-Za-z0-9_]+', 'USERNAME'),
+			  (r'(http|https|ftp)\S+', 'URL'),
+			  (r'(rt)', ''),
+			  # acronyms, slang
+			  (r'(ab|abt)', 'about'),
+			  (r'(ama)', 'ask me anything'),
+			  (r'(ab|abt)', 'about'),
+			  (r'(b4)', 'before'),
+			  (r'(bfn)', 'bye for now'),
+			  (r'(btw)', 'by the way'),
+			  (r'(bgd)', 'background'),
+			  (r'(chk)', 'check'),
+			  (r'(cr8|cre8)', 'create'),
+			  (r'(cld)', 'could'),
+			  (r'(clk)', 'click'),
+			  (r'(dae)', 'does anyone else'),
+			  (r'(dm)', 'direct message'),
+			  (r'(f2f)', 'face to face'),
+			  (r'(fab)', 'fabulous'),
+			  (r'(fomo)', 'fear of missing out'),
+			  (r'(ftl)', 'for the loss'),
+			  (r'(ftw)', 'for the win'),
+			  (r'(ftfy)', 'fixed that for you'),
+			  (r'(hifw)', 'how i felt when'),
+			  (r'(ic)', 'i see'),
+			  (r'(icymi)', 'in case you missed it'),
+			  (r'(idk)', "i don't know"),
+			  (r'(imo)', 'in my opinion'),
+			  (r'(imho)', 'in my humble opinion'),
+			  (r'(irl)', 'in real life'),
+			  (r'(jsyk)', 'just so you know'),
+			  (r'(lol)', 'laughing out loud'),
+			  (r'(mfw)', 'my face when'),
+			  (r'(mrw)', 'my reaction when'),
+			  (r'(mirl)', 'me in real life'),
+			  (r'(mtf)', 'more to follow'),
+			  (r'(nsfw)', 'not safe for work'),
+			  (r'(nsfl)', 'not safe for life'),
+			  (r'(nts)', 'note to self'),
+			  (r'(paw)', 'parents are watching'),
+			  (r'(prt)', 'please retweet'),
+			  (r'(qft)', 'quote for truth'),
+			  (r'(smh)', 'shaking my head'),
+			  (r'(til)', 'today i learned'),
+			  (r'(tbh)', 'to be honest'),
+			  (r'(tmb)', 'tweet me back'),
+			  (r'(u)', 'you'),
+			  (r'(woz)', 'was'),
+			  (r'(wtv)', 'whatever'),
+			  (r'(ymmv)', 'your mileage may vary'),
+			  (r'(yolo)', 'you only live once'),
+			  # repeated letters
 			  (r'((\w)\2{2,})', r'\2')]
 
+# emoticons
 emoticonsDictionary = [	
 		([':-)', ':)', '(:', '(-:',], 'EMOT_SMILEY'),
 		([':-D', ':D', 'X-D', 'XD', 'xD',], 'EMOT_LAUGH'),
-		(['<3', ':\*', ], 'EMOT_LOVE',		),
+		(['<3', ':\*', ], 'EMOT_LOVE'),
 		([';-)', ';)', ';-D', ';D', '(;', '(-;',], 'EMOT_WINK'),
 		([':-(', ':(', '(:', '(-:',], 'EMOT_FROWN'),
 		([':,(', ':\'(', ':"(', ':((',], 'EMOT_CRY')]
@@ -73,7 +136,7 @@ def buildEmoticonRegex(emoticons):
 
 emoticonsRegexRules = [ (buildEmoticonRegex(emoticons), replace) for (emoticons, replace) in emoticonsDictionary]
 
-# remove user-mentions, hashtags, links and replace repeated characters, emoticons (>2)
+# remove user-mentions, hashtags, links and replace repeated characters, emoticons
 def preprocessData(data):
 	tweets = []
 	for (index, row) in data.iterrows():
@@ -97,7 +160,7 @@ print('[INFO]: extracting features from the test data...')
 testDtm = vectorizer.transform(processedTestTweets)
 
 
-# benchmarking
+# compare and contrast classifiers
 def benchmark(classifier, classifierName):
 	# train the classifier and predict class-labels
 	print('[INFO]: Training the classifier on the training set')
@@ -123,13 +186,6 @@ def benchmark(classifier, classifierName):
 	print('[INFO]: Confusion matrix:')
 	print(confusionMatrix)
 
-	"""
-	# plot confusion matrix
-	plt.matshow(confusionMatrix)
-	plt.title('Confusion matrix (%s)' % classifierName)
-	plt.colorbar()
-	"""
-
 	# return benchmark parameters
 	return classifierName, score, trainTime, testTime
 
@@ -150,6 +206,7 @@ for classifier, classifierName in classifiers:
 	results.append(benchmark(classifier, classifierName))
 
 # make some plots
+# plot code referenced from scikit-learn tutorials
 indices = np.arange(len(results))
 results = [[result[idx] for result in results] for idx in range(4)]
 classifierNames, score, trainingTime, testTime = results
